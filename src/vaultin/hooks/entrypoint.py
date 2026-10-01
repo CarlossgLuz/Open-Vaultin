@@ -263,8 +263,15 @@ class CodexHookController:
                 "stopReason": f"Vaultin health is BLOCKED: {blocked}",
                 "systemMessage": "Vaultin blocked this Codex turn because governance health failed.",
             }
-        if self.session_store.load(session_id) is None:
-            self.session_store.save(CodexSessionState(session_id=session_id))
+        with self.session_store.transaction_lock(session_id, timeout=1):
+            state = self.session_store.load(session_id)
+            if state is None:
+                self.session_store.save(CodexSessionState(session_id=session_id))
+            elif state.execution_id:
+                self._recover_active_execution(
+                    state,
+                    reason="new SessionStart superseded an inherited active execution",
+                )
         return {
             "continue": True,
             "hookSpecificOutput": {
