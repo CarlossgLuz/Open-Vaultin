@@ -324,10 +324,24 @@ def test_hook_wrappers_force_live_checkout_source() -> None:
     ps1 = (root / "scripts/install.ps1").read_text(encoding="utf-8")
     sh = (root / "scripts/install.sh").read_text(encoding="utf-8")
 
-    assert 'set `"PYTHONPATH=$Root;%PYTHONPATH%`"' in ps1
+    assert 'set `"PYTHONPATH=$Source;%PYTHONPATH%`"' in ps1
     assert '-m vaultin.hooks.entrypoint %* --root' in ps1
     assert '-m vaultin.cli %*' in ps1
 
-    assert 'export PYTHONPATH="$ROOT' in sh
+    assert 'export PYTHONPATH="$SOURCE' in sh
     assert '-m vaultin.hooks.entrypoint "\$@" --root "$ROOT"' in sh
     assert '-m vaultin.cli "\$@"' in sh
+
+
+def test_installers_verify_runtime_import_comes_from_checkout_src() -> None:
+    root = Path.cwd()
+    ps1 = (root / "scripts/install.ps1").read_text(encoding="utf-8")
+    sh = (root / "scripts/install.sh").read_text(encoding="utf-8")
+
+    assert 'VAULTIN_EXPECTED_SOURCE' in ps1
+    assert 'Join-Path $Root "src"' in ps1
+    assert 'loaded.is_relative_to(expected)' in ps1
+
+    assert 'VAULTIN_EXPECTED_SOURCE' in sh
+    assert 'SOURCE="$ROOT/src"' in sh
+    assert 'loaded.is_relative_to(expected)' in sh
