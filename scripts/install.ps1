@@ -30,8 +30,10 @@ Invoke-NativeChecked $Vpy -m pip install --editable $Root
 $VaultinCtl = Join-Path $Venv "Scripts\vaultinctl.exe"
 $Cli = Join-Path $Bin "vaultinctl.cmd"
 $Hook = Join-Path $Bin "vaultinctl-hook.cmd"
-Set-Content -Path $Cli -Encoding ASCII -Value "@echo off`r`n`"$VaultinCtl`" %*`r`n"
-Set-Content -Path $Hook -Encoding ASCII -Value "@echo off`r`n`"$Vpy`" -m vaultin.hooks.entrypoint %* --root `"$Root`"`r`n"
+$CliBody = "@echo off`r`nset `"PYTHONPATH=$Root;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.cli %*`r`n"
+$HookBody = "@echo off`r`nset `"PYTHONPATH=$Root;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.hooks.entrypoint %* --root `"$Root`"`r`n"
+Set-Content -Path $Cli -Encoding ASCII -Value $CliBody
+Set-Content -Path $Hook -Encoding ASCII -Value $HookBody
 
 $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $UserParts = @($UserPath -split ";" | Where-Object { $_ })
@@ -63,5 +65,5 @@ foreach ($Property in $HooksJson.hooks.PSObject.Properties) {
 }
 $HooksJson | ConvertTo-Json -Depth 20 | Set-Content -Path $HooksPath -Encoding UTF8
 
-Invoke-NativeChecked $VaultinCtl health --root $Root
+Invoke-NativeChecked $Cli health --root $Root
 Write-Host "Vaultin installed. CLI available as vaultinctl. Codex hook uses the absolute wrapper $Hook."
