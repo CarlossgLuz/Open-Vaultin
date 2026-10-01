@@ -234,6 +234,8 @@ Start with:
 - [Recovery](docs/operations/recovery.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+- [Roadmap](ROADMAP.md)
+- [Release process](docs/releasing.md)
 
 ## Development
 

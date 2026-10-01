@@ -9,6 +9,7 @@ If you are new to the project, read the documents in this order:
 3. [Configuration](configuration.md) — repository configuration, environment variables, policies, agents, skills, and runtime paths.
 4. [Client integrations](client-integrations.md) — Codex lifecycle hooks and the MCP surface for secondary AI clients.
 5. [Troubleshooting](troubleshooting.md) — health failures, hook issues, sync states, replica divergence, JEV fallback, and recovery.
+6. [Release process](releasing.md) — release gate, semantic versioning, and manual publication workflow.
 
 ## Operations
 
