@@ -235,6 +235,34 @@ Check the runtime ledger/events and hook error log.
 
 A missing successful receipt should not be interpreted as successful completion.
 
-## Release-readiness checks
+## Cutover checks are still blocked
 
-A green test suite is necessary but not sufficient for a trusted installation. Follow [operations/cutover.md](operations/cutover.md) and validate the real client lifecycle in the target environment.
+A green test suite is not the only cutover requirement.
+
+Read:
+
+```text
+acceptance/evidence.yaml
+docs/operations/cutover.md
+```
+
+The acceptance file distinguishes automated evidence from external/live-host evidence that still needs to be demonstrated.
+
+
+## PreToolUse runs before execution context exists
+
+Some Codex/client lifecycle sequences can invoke `PreToolUse` before
+`UserPromptSubmit` has persisted a Vaultin execution context, or immediately
+after an interrupted context was recovered.
+
+Vaultin does **not** block safe tool use solely because the execution context is
+missing. In this situation `PreToolUse` evaluates policy in stateless
+**policy-only mode**:
+
+- explicit policy denials are still denied;
+- policy-engine failures still fail closed;
+- safe reads, Git discovery, tests, and other non-denied actions may proceed so
+  the client can restore/bootstrap the governed execution.
+
+A missing execution context is therefore no longer a self-reinforcing bootstrap
+deadlock.
