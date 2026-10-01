@@ -14,6 +14,7 @@ function Invoke-NativeChecked {
 
 # Vaultin requires Python 3.11+.
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$Source = Join-Path $Root "src"
 $Python = if ($env:PYTHON) { $env:PYTHON } else { "python" }
 Invoke-NativeChecked $Python -c "import sys; assert sys.version_info >= (3,11), 'Vaultin requires Python 3.11 or newer'"
 $State = Join-Path $HOME ".vaultin"
@@ -26,12 +27,15 @@ Invoke-NativeChecked $Python -m venv $Venv
 $Vpy = Join-Path $Venv "Scripts\python.exe"
 Invoke-NativeChecked $Vpy -m pip install --upgrade pip
 Invoke-NativeChecked $Vpy -m pip install --editable $Root
+$env:VAULTIN_EXPECTED_SOURCE = $Source
+$env:PYTHONPATH = "$Source;$env:PYTHONPATH"
+Invoke-NativeChecked $Vpy -c "import os, pathlib, vaultin; loaded=pathlib.Path(vaultin.__file__).resolve(); expected=pathlib.Path(os.environ['VAULTIN_EXPECTED_SOURCE']).resolve(); assert loaded.is_relative_to(expected), f'Vaultin import source mismatch: {loaded} not under {expected}'; print(f'Vaultin runtime source: {loaded}')"
 
 $VaultinCtl = Join-Path $Venv "Scripts\vaultinctl.exe"
 $Cli = Join-Path $Bin "vaultinctl.cmd"
 $Hook = Join-Path $Bin "vaultinctl-hook.cmd"
-$CliBody = "@echo off`r`nset `"PYTHONPATH=$Root;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.cli %*`r`n"
-$HookBody = "@echo off`r`nset `"PYTHONPATH=$Root;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.hooks.entrypoint %* --root `"$Root`"`r`n"
+$CliBody = "@echo off`r`nset `"PYTHONPATH=$Source;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.cli %*`r`n"
+$HookBody = "@echo off`r`nset `"PYTHONPATH=$Source;%PYTHONPATH%`"`r`n`"$Vpy`" -m vaultin.hooks.entrypoint %* --root `"$Root`"`r`n"
 Set-Content -Path $Cli -Encoding ASCII -Value $CliBody
 Set-Content -Path $Hook -Encoding ASCII -Value $HookBody
 
