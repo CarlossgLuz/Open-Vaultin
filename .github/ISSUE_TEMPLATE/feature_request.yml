@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a focused Vaultin improvement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the concrete workflow or limitation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security / compatibility considerations
+      description: Note effects on hooks, policy, privacy, Windows/Linux, JEV or MCP.

@@ -1,0 +1,56 @@
+name: Vaultin CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install Vaultin
+        run: python -m pip install -e ".[dev]"
+      - name: Validate dependency graph
+        run: python -m pip check
+      - name: Unit tests
+        run: python -m pytest tests/unit -v
+      - name: Integration tests
+        run: python -m pytest tests/integration -v
+      - name: Parse Windows installer
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path .\scripts\install.ps1),
+            [ref]$null,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+      - name: Behavioral evals
+        run: python -m pytest tests/evals -v
+      - name: Acceptance tests when present
+        shell: bash
+        run: |
+          if [ -d tests/acceptance ]; then python -m pytest tests/acceptance -v; fi
+      - name: Healthcheck
+        run: vaultinctl health --root .
+      - name: Verify MCP SDK v2 entrypoint
+        run: python -c "from mcp.server import MCPServer; assert callable(getattr(MCPServer('probe'), 'run', None))"

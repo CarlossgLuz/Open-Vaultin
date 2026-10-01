@@ -1,0 +1,9 @@
+.vaultin-runtime/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.superpowers/
+
+# Local execution memory may contain prompts, paths, Git evidence or project context.
+memory/

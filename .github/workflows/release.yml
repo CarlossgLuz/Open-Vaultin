@@ -1,0 +1,68 @@
+name: Vaultin Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Require CI-compatible tests before release
+        run: python -m pytest tests/unit tests/integration tests/evals -q
+      - name: Determine and apply SemVer release
+        id: version
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          from vaultin.release.manager import ReleaseManager
+          root = Path('.')
+          changed = subprocess.check_output(['git', 'diff', '--name-only', 'HEAD^', 'HEAD'], text=True).splitlines()
+          message = subprocess.check_output(['git', 'log', '-1', '--pretty=%B'], text=True).casefold()
+          labels = []
+          if 'breaking' in message or '!' in message.split(':', 1)[0]: labels.append('breaking')
+          elif message.startswith('feat'): labels.append('feature')
+          else: labels.append('fix')
+          manager = ReleaseManager(root)
+          bump = manager.classify_change(changed, labels=labels)
+          if bump == 'none':
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('release=false\n')
+              raise SystemExit(0)
+          current = (root / 'VERSION').read_text().strip()
+          version = manager.next_version(current, bump)
+          (root / 'VERSION').write_text(version + '\n')
+          pyproject = root / 'pyproject.toml'
+          text = pyproject.read_text()
+          text = text.replace(f'version = "{current}"', f'version = "{version}"')
+          pyproject.write_text(text)
+          changelog = root / 'CHANGELOG.md'
+          prior = changelog.read_text() if changelog.exists() else '# Changelog\n'
+          changelog.write_text(f'# Changelog\n\n## {version}\n\n- Automated runtime release.\n\n' + prior.removeprefix('# Changelog\n').lstrip())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('release=true\n')
+              out.write(f'version={version}\n')
+          PY
+      - name: Commit tag and publish GitHub Release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION pyproject.toml CHANGELOG.md
+          git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip ci]"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin HEAD:main --follow-tags
+          gh release create "v${{ steps.version.outputs.version }}" --generate-notes
