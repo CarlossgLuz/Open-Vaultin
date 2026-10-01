@@ -8,7 +8,7 @@ Current V1 schema:
 
 ```yaml
 version: 1
-repository: YOUR_GITHUB_USER/Vaultin
+repository: YOUR_GITHUB_USER/Open-Vaultin
 project_vault_owner: YOUR_GITHUB_USER
 project_vault_prefix: vault-
 fail_closed: true
@@ -34,7 +34,7 @@ version: 1
 Canonical Vaultin repository identifier.
 
 ```yaml
-repository: YOUR_GITHUB_USER/Vaultin
+repository: YOUR_GITHUB_USER/Open-Vaultin
 ```
 
 #### `project_vault_owner`
@@ -126,7 +126,7 @@ Resolution priority for hooks is:
 Example:
 
 ```bash
-export VAULTIN_ROOT="$HOME/src/Vaultin"
+export VAULTIN_ROOT="$HOME/src/Open-Vaultin"
 ```
 
 ### `TYPESAFE_API_KEY`

@@ -2,7 +2,7 @@
 
 ## 1. Fork first
 
-For personal use, fork Vaultin to a **private** repository. Vaultin is intended to hold durable knowledge and project-vault metadata that may be private.
+For personal use, fork Open-Vaultin to a **private** repository. Vaultin is intended to hold durable knowledge and project-vault metadata that may be private.
 
 ## 2. Configure your fork
 
@@ -10,7 +10,7 @@ Edit `vaultin.yaml` before installation:
 
 ```yaml
 version: 1
-repository: YOUR_GITHUB_USER/Vaultin
+repository: YOUR_GITHUB_USER/Open-Vaultin
 project_vault_owner: YOUR_GITHUB_USER
 project_vault_prefix: vault-
 fail_closed: true

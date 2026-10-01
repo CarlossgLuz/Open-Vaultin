@@ -123,7 +123,7 @@ Edit `vaultin.yaml`:
 
 ```yaml
 version: 1
-repository: YOUR_GITHUB_USER/YOUR_PRIVATE_VAULTIN_REPO
+repository: YOUR_GITHUB_USER/Open-Vaultin
 project_vault_owner: YOUR_GITHUB_USER
 project_vault_prefix: vault-
 fail_closed: true
