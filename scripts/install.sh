@@ -20,11 +20,18 @@ printf '%s\n' "$ROOT" > "$STATE/root"
 "$VENV/bin/python" -m pip install --upgrade pip
 "$VENV/bin/python" -m pip install --editable "$ROOT"
 
-ln -sf "$VENV/bin/vaultinctl" "$BIN/vaultinctl"
-ln -sf "$VENV/bin/vaultinctl" "$HOME/.local/bin/vaultinctl"
+cat > "$BIN/vaultinctl" <<EOF
+#!/usr/bin/env bash
+export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
+exec "$VENV/bin/python" -m vaultin.cli "\$@"
+EOF
+chmod +x "$BIN/vaultinctl"
+ln -sf "$BIN/vaultinctl" "$HOME/.local/bin/vaultinctl"
+
 cat > "$BIN/vaultinctl-hook" <<EOF
 #!/usr/bin/env bash
-exec "$VENV/bin/python" -m vaultin.hooks.entrypoint "\$@"
+export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
+exec "$VENV/bin/python" -m vaultin.hooks.entrypoint "\$@" --root "$ROOT"
 EOF
 chmod +x "$BIN/vaultinctl-hook"
 
@@ -53,5 +60,5 @@ for matchers in data.get("hooks", {}).values():
 path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 PY
 
-"$VENV/bin/vaultinctl" health --root "$ROOT"
+"$BIN/vaultinctl" health --root "$ROOT"
 printf 'Vaultin installed. Codex hook uses the absolute wrapper at %s; no PATH change is required for governance.\n' "$BIN/vaultinctl-hook"
