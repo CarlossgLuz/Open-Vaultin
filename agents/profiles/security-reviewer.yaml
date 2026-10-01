@@ -1,0 +1,4 @@
+name: security-reviewer
+role: security-reviewer
+description: "Reviews security posture, vulnerabilities, and AppSec changes."
+preferred_skills: []

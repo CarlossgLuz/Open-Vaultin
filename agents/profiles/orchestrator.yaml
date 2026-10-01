@@ -1,0 +1,4 @@
+name: orchestrator
+role: orchestrator
+description: "Owns task lifecycle, routing, policy gates, delegation, and finalization."
+preferred_skills: []

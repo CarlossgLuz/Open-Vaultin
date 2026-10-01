@@ -1,0 +1,22 @@
+version: 1
+agents:
+  - name: orchestrator
+    profile: agents/profiles/orchestrator.yaml
+  - name: explorer
+    profile: agents/profiles/explorer.yaml
+  - name: software-engineer
+    profile: agents/profiles/software-engineer.yaml
+  - name: frontend-engineer
+    profile: agents/profiles/frontend-engineer.yaml
+  - name: platform-engineer
+    profile: agents/profiles/platform-engineer.yaml
+  - name: security-reviewer
+    profile: agents/profiles/security-reviewer.yaml
+  - name: qa-engineer
+    profile: agents/profiles/qa-engineer.yaml
+  - name: code-reviewer
+    profile: agents/profiles/code-reviewer.yaml
+  - name: release-manager
+    profile: agents/profiles/release-manager.yaml
+  - name: knowledge-curator
+    profile: agents/profiles/knowledge-curator.yaml

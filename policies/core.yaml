@@ -1,0 +1,4 @@
+critical:
+  deny_actions:
+    - disable_governance
+project: {}

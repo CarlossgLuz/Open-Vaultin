@@ -1,0 +1,4 @@
+name: release-manager
+role: release-manager
+description: "Coordinates versioning, release gates, and release execution."
+preferred_skills: []

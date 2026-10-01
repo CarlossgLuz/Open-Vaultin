@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "source": "vaultin-core",
+  "skills": [
+    {"name":"codebase-discovery","path":".agents/skills/codebase-discovery/SKILL.md","version":"1.0.0"},
+    {"name":"memory-and-git-sync","path":".agents/skills/memory-and-git-sync/SKILL.md","version":"1.0.0"},
+    {"name":"persistent-task-planning","path":".agents/skills/persistent-task-planning/SKILL.md","version":"1.0.0"},
+    {"name":"safe-change-protocol","path":".agents/skills/safe-change-protocol/SKILL.md","version":"1.0.0"},
+    {"name":"scope-audit","path":".agents/skills/scope-audit/SKILL.md","version":"1.0.0"},
+    {"name":"typed-agent-handoff","path":".agents/skills/typed-agent-handoff/SKILL.md","version":"1.0.0"},
+    {"name":"vault-bootstrap","path":".agents/skills/vault-bootstrap/SKILL.md","version":"1.0.0"}
+  ]
+}
