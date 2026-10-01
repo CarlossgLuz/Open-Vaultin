@@ -317,3 +317,17 @@ def test_installers_use_editable_checkout_install() -> None:
 
     assert "pip install --editable $Root" in ps1
     assert 'pip install --editable "$ROOT"' in sh
+
+
+def test_hook_wrappers_force_live_checkout_source() -> None:
+    root = Path.cwd()
+    ps1 = (root / "scripts/install.ps1").read_text(encoding="utf-8")
+    sh = (root / "scripts/install.sh").read_text(encoding="utf-8")
+
+    assert 'set `"PYTHONPATH=$Root;%PYTHONPATH%`"' in ps1
+    assert '-m vaultin.hooks.entrypoint %* --root' in ps1
+    assert '-m vaultin.cli %*' in ps1
+
+    assert 'export PYTHONPATH="$ROOT' in sh
+    assert '-m vaultin.hooks.entrypoint "\$@" --root "$ROOT"' in sh
+    assert '-m vaultin.cli "\$@"' in sh
