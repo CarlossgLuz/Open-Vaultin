@@ -4,6 +4,7 @@ set -euo pipefail
 
 # Vaultin requires Python 3.11+.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+SOURCE="$ROOT/src"
 PYTHON="${PYTHON:-python3}"
 "$PYTHON" - <<'PY'
 import sys
@@ -19,10 +20,22 @@ printf '%s\n' "$ROOT" > "$STATE/root"
 "$PYTHON" -m venv "$VENV"
 "$VENV/bin/python" -m pip install --upgrade pip
 "$VENV/bin/python" -m pip install --editable "$ROOT"
+export PYTHONPATH="$SOURCE${PYTHONPATH:+:$PYTHONPATH}"
+VAULTIN_EXPECTED_SOURCE="$SOURCE" "$VENV/bin/python" - <<'PY'
+import os
+from pathlib import Path
+import vaultin
+
+loaded = Path(vaultin.__file__).resolve()
+expected = Path(os.environ["VAULTIN_EXPECTED_SOURCE"]).resolve()
+if not loaded.is_relative_to(expected):
+    raise SystemExit(f"Vaultin import source mismatch: {loaded} not under {expected}")
+print(f"Vaultin runtime source: {loaded}")
+PY
 
 cat > "$BIN/vaultinctl" <<EOF
 #!/usr/bin/env bash
-export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
+export PYTHONPATH="$SOURCE\${PYTHONPATH:+:\$PYTHONPATH}"
 exec "$VENV/bin/python" -m vaultin.cli "\$@"
 EOF
 chmod +x "$BIN/vaultinctl"
@@ -30,7 +43,7 @@ ln -sf "$BIN/vaultinctl" "$HOME/.local/bin/vaultinctl"
 
 cat > "$BIN/vaultinctl-hook" <<EOF
 #!/usr/bin/env bash
-export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
+export PYTHONPATH="$SOURCE\${PYTHONPATH:+:\$PYTHONPATH}"
 exec "$VENV/bin/python" -m vaultin.hooks.entrypoint "\$@" --root "$ROOT"
 EOF
 chmod +x "$BIN/vaultinctl-hook"
