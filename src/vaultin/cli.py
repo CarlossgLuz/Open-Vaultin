@@ -31,6 +31,8 @@ def health(root: Path = typer.Option(Path.cwd(), "--root")) -> None:
 @app.command()
 def doctor(root: Path = typer.Option(Path.cwd(), "--root")) -> None:
     """Print diagnostics without silently mutating governance state."""
+    typer.echo(f"runtime_source: {Path(__file__).resolve()}")
+    typer.echo(f"configured_root: {Path(root).resolve()}")
     if not _print_health(root):
         typer.echo("Repair the blocked checks before governed execution.")
         raise typer.Exit(code=1)
