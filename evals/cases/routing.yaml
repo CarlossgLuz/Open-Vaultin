@@ -1,0 +1,17 @@
+cases:
+  - prompt: "fix failing backend API test"
+    agents: [software-engineer]
+  - prompt: "refine React frontend interface"
+    agents: [frontend-engineer]
+  - prompt: "review this SAST security finding"
+    agents: [security-reviewer]
+  - prompt: "validate QA tests"
+    agents: [qa-engineer]
+  - prompt: "review this pull request"
+    agents: [code-reviewer]
+  - prompt: "prepare semver release"
+    agents: [release-manager]
+  - prompt: "document durable vault knowledge"
+    agents: [knowledge-curator]
+  - prompt: "understand unfamiliar repository"
+    agents: [explorer]

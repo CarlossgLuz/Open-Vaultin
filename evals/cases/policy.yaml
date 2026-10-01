@@ -1,0 +1,24 @@
+cases:
+  - name: critical deny
+    mapping:
+      critical:
+        deny_actions: [disable_governance]
+      project: {}
+    action: disable_governance
+    user_authorized: true
+    expected: deny
+  - name: project deny
+    mapping:
+      critical: {}
+      project:
+        deny_actions: [deploy]
+    action: deploy
+    user_authorized: true
+    expected: deny
+  - name: authorized ordinary action
+    mapping:
+      critical: {}
+      project: {}
+    action: edit
+    user_authorized: true
+    expected: allow
