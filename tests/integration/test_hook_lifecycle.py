@@ -476,3 +476,44 @@ def test_invalid_jev_timeout_uses_safe_default(tmp_path: Path, monkeypatch) -> N
     classifier = controller._jev(agent_names=["software-engineer"], skill_names=[])
 
     assert classifier.timeout_seconds == 3.0
+
+
+def test_pre_tool_without_execution_context_allows_safe_bootstrap(tmp_path: Path) -> None:
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+
+    response = controller.handle(
+        event="pre-tool",
+        payload={
+            "session_id": "sess-bootstrap",
+            "turn_id": "turn-bootstrap",
+            "cwd": str(project),
+            "tool_name": "Bash",
+            "tool_use_id": "tool-bootstrap",
+            "tool_input": {"command": "git status --short"},
+        },
+    )
+
+    assert response == {}
+
+
+def test_pre_tool_without_execution_context_still_enforces_policy(tmp_path: Path) -> None:
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+
+    response = controller.handle(
+        event="pre-tool",
+        payload={
+            "session_id": "sess-bootstrap-deny",
+            "turn_id": "turn-bootstrap-deny",
+            "cwd": str(project),
+            "tool_name": "Bash",
+            "tool_use_id": "tool-bootstrap-deny",
+            "tool_input": {"command": "deploy --production"},
+        },
+    )
+
+    assert response["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert "project policy" in response["hookSpecificOutput"]["permissionDecisionReason"]
