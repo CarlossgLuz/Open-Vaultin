@@ -1,0 +1,87 @@
+{
+  "description": "Vaultin Codex lifecycle integration",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook session-start",
+            "timeout": 10,
+            "additionalContextLimit": 128
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook prompt-submit",
+            "timeout": 15,
+            "additionalContextLimit": 128
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook pre-tool",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook post-tool",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook stop",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook interrupt",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vaultinctl-hook session-end",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
