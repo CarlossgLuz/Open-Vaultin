@@ -1,0 +1,10 @@
+# Default maintainer ownership
+* @CarlossgLuz
+
+# Security and governance-sensitive surfaces
+/policies/ @CarlossgLuz
+/workflows/ @CarlossgLuz
+/src/vaultin/hooks/ @CarlossgLuz
+/src/vaultin/policy/ @CarlossgLuz
+/src/vaultin/routing/ @CarlossgLuz
+/.github/workflows/ @CarlossgLuz
