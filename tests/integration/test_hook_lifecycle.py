@@ -517,3 +517,39 @@ def test_pre_tool_without_execution_context_still_enforces_policy(tmp_path: Path
 
     assert response["hookSpecificOutput"]["permissionDecision"] == "deny"
     assert "project policy" in response["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+def test_session_start_recovers_inherited_active_execution(tmp_path: Path) -> None:
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+
+    controller.handle(
+        event="prompt-submit",
+        payload={
+            "session_id": "sess-restarted",
+            "turn_id": "turn-old",
+            "cwd": str(project),
+            "prompt": "inspect backend",
+        },
+    )
+    previous = controller.session_store.load("sess-restarted")
+    assert previous is not None and previous.execution_id
+    previous_execution = previous.execution_id
+
+    response = controller.handle(
+        event="session-start",
+        payload={
+            "session_id": "sess-restarted",
+            "cwd": str(project),
+            "source": "startup",
+        },
+    )
+
+    assert response["continue"] is True
+    finished = controller.ledger.execution(previous_execution)
+    assert finished.status == "FAILED"
+    assert finished.finished_at is not None
+    recovered = controller.session_store.load("sess-restarted")
+    assert recovered is not None
+    assert recovered.execution_id is None
