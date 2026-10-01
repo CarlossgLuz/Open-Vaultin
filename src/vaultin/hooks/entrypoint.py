@@ -337,16 +337,13 @@ class CodexHookController:
         return self._route_context(context.execution_id, context.route)
 
     def _pre_tool(self, payload: dict[str, Any]) -> dict:
-        session_id = self._required(payload, "session_id")
-        state = self.session_store.load(session_id)
-        if state is None or not state.execution_id:
-            return {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": "Vaultin execution context unavailable",
-                }
-            }
+        # PreToolUse policy evaluation is intentionally stateless. Codex may invoke
+        # a tool before UserPromptSubmit has persisted an execution context, or a
+        # previous hook process may have lost/recovered that context. Blocking here
+        # creates a bootstrap deadlock because even safe reads/Git discovery cannot
+        # run to restore the session. Policy remains authoritative: explicit denies
+        # and policy-engine failures are still denied below.
+        self._required(payload, "session_id")
         try:
             for action in _policy_candidates(payload):
                 decision = self.policy_engine.evaluate(
