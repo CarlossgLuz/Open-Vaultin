@@ -6,7 +6,22 @@ Start with:
 vaultinctl doctor
 ```
 
-Vaultin is designed to report blocked governance instead of silently repairing or weakening it.
+Canonical policy/configuration errors remain explicit blockers. Derived session state and temporary bookkeeping failures are handled separately, so a locked execution database does not become a tool authorization denial.
+
+## Automatic recovery and hook latency
+
+Current hooks open the execution ledger and session storage only when needed. `PreToolUse` evaluates canonical policy without opening either store; a busy ledger cannot stall that permission check.
+
+Lifecycle ledger/schema waits are limited to 250 ms each, and the default session transaction-lock wait is 500 ms. A transient lock or unusable bookkeeping store releases session-start/prompt-submit with an explicit degraded message after canonical bootstrap policy is revalidated. The affected turn must not claim a verified execution receipt. The next hook retries storage automatically; normal recording resumes when storage is available.
+
+Malformed/invalid session JSON is quarantined locally as `<session-hash>.json.invalid-<unique-id>` and rebuilt on the next prompt. BOM-prefixed valid files are supported. Saved routing context is revalidated before duplicate prompts reuse it; invalid context is marked failed and rerouted. The ledger and canonical policies are never deleted or replaced with guessed defaults.
+
+An unavailable/invalid policy still blocks. Disk failure, invalid canonical configuration and missing credentials are not things Vaultin can safely solve by inventing defaults. No periodic manual state cleanup is required for the recovery cases above.
+
+Error records include UTC timestamp, event, elapsed hook-processing time, runtime source path, exception type and message. The time excludes Python import/startup. These fields help distinguish contention from a stale installation; review/redact logs before sharing them.
+
+A screenshot showing `hook exited with code 1` identifies a process failure, but does not identify its cause. If there is no corresponding entry in `~/.vaultin/hook-errors.log`, the failure may have happened before the Python handler ran (for example in the launcher or imports). Check the client-provided stderr rather than treating every code 1 as a database error.
+
 
 ## `vaultinctl health` returns `BLOCKED`
 
@@ -69,7 +84,7 @@ Then inspect:
 ~/.vaultin/hook-errors.log
 ```
 
-Hook exceptions are appended there with event name, exception type, and message.
+Hook exceptions are appended there with timestamp, event, elapsed processing time, runtime source, exception type and message.
 
 ## A new prompt is blocked by an old execution
 

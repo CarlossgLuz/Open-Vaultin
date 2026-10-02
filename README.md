@@ -571,6 +571,8 @@ evals/                 Behavioral evaluation cases
 
 # Troubleshooting
 
+Routine session recovery is automatic: malformed derived session files are quarantined locally, stale routing context is rebuilt, and busy execution storage is retried on later hooks. Tool policy checks do not depend on the execution database. A bookkeeping failure is reported as degraded and cannot be presented as a verified receipt. Canonical policy/configuration errors remain blockers. See [automatic recovery](docs/troubleshooting.md#automatic-recovery-and-hook-latency).
+
 If something does not work after installation, start with:
 
 ```text

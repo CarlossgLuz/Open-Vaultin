@@ -36,19 +36,24 @@ def _new_execution_id() -> str:
 
 
 class LedgerStore:
-    def __init__(self, database_path: Path) -> None:
+    def __init__(self, database_path: Path, *, timeout_seconds: float = 5.0) -> None:
+        self.timeout_seconds = timeout_seconds
         self.database_path = Path(database_path)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
-        self._schema_lock = FileLock(str(self.database_path) + ".schema.lock")
+        self._schema_lock = FileLock(str(self.database_path) + ".schema.lock", timeout=self.timeout_seconds)
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.database_path, timeout=5)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA busy_timeout=5000")
-        return connection
+        connection = sqlite3.connect(self.database_path, timeout=self.timeout_seconds)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute(f"PRAGMA busy_timeout={int(self.timeout_seconds * 1000)}")
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA foreign_keys=ON")
+            return connection
+        except Exception:
+            connection.close()
+            raise
 
     def _initialize(self) -> None:
         with self._schema_lock:

@@ -31,7 +31,7 @@ class HealthChecker:
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
 
-    def run(self) -> HealthReport:
+    def run(self, *, ledger_timeout_seconds: float = 5.0) -> HealthReport:
         checks: list[HealthCheck] = []
 
         def check(name: str, fn) -> None:
@@ -79,7 +79,7 @@ class HealthChecker:
 
         def ledger() -> None:
             paths = VaultinPaths.from_root(self.root)
-            LedgerStore(paths.ledger_db)
+            LedgerStore(paths.ledger_db, timeout_seconds=ledger_timeout_seconds)
 
         check("ledger", ledger)
         overall = "PASS" if all(item.status == "PASS" for item in checks) else "BLOCKED"

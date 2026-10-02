@@ -553,3 +553,167 @@ def test_session_start_recovers_inherited_active_execution(tmp_path: Path) -> No
     recovered = controller.session_store.load("sess-restarted")
     assert recovered is not None
     assert recovered.execution_id is None
+
+
+def _hook_process(root, event, payload, *, timeout=3):
+    import json
+    import os
+    import sys
+    return subprocess.run(
+        [sys.executable, '-m', 'vaultin.hooks.entrypoint', event, '--root', str(root)],
+        input=json.dumps(payload), text=True, capture_output=True, timeout=timeout,
+        env={**os.environ, 'TYPESAFE_API_KEY': ''},
+    )
+
+
+def test_pre_tool_does_not_wait_for_locked_execution_database(tmp_path: Path) -> None:
+    import json
+    from filelock import FileLock
+    root = _fixture_root(tmp_path)
+    runtime = root / '.vaultin-runtime'
+    runtime.mkdir()
+    with FileLock(str(runtime / 'vaultin.db') + '.schema.lock'):
+        result = _hook_process(root, 'pre-tool', {
+            'session_id': 'busy', 'tool_name': 'shell', 'tool_input': {'command': 'git status'},
+        })
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {}
+    assert not (runtime / 'vaultin.db').exists()
+
+
+def test_pre_tool_enforces_policy_when_runtime_directory_is_unavailable(tmp_path: Path) -> None:
+    import json
+    root = _fixture_root(tmp_path)
+    (root / '.vaultin-runtime').write_text('not a directory', encoding='utf-8')
+    result = _hook_process(root, 'pre-tool', {
+        'session_id': 'unavailable', 'tool_name': 'shell', 'tool_input': {'command': 'deploy'},
+    })
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['hookSpecificOutput']['permissionDecision'] == 'deny'
+    allowed = _hook_process(root, 'pre-tool', {
+        'session_id': 'unavailable', 'tool_name': 'shell', 'tool_input': {'command': 'git status'},
+    })
+    assert allowed.returncode == 0, allowed.stderr
+    assert json.loads(allowed.stdout) == {}
+
+
+def test_prompt_recovers_invalid_session_file_without_user_cleanup(tmp_path: Path) -> None:
+    import json
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+    state_path = controller.session_store._path('corrupt')
+    damaged = '{"session_id":'
+    state_path.write_text(damaged, encoding='utf-8')
+    result = _hook_process(root, 'prompt-submit', {
+        'session_id': 'corrupt', 'turn_id': 'new', 'cwd': str(project), 'prompt': 'inspect backend',
+    })
+    assert result.returncode == 0, result.stderr
+    assert 'execution_id=' in json.loads(result.stdout)['hookSpecificOutput']['additionalContext']
+    state = controller.session_store.load('corrupt')
+    assert state is not None and state.turn_id == 'new' and state.execution_id
+    backups = list(state_path.parent.glob(state_path.name + '.invalid-*'))
+    assert len(backups) == 1 and backups[0].read_text(encoding='utf-8') == damaged
+
+
+def test_busy_ledger_releases_prompt_and_next_prompt_recovers(tmp_path: Path) -> None:
+    import json
+    from filelock import FileLock
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    runtime = root / '.vaultin-runtime'
+    runtime.mkdir()
+    payload = {'session_id': 'busy', 'turn_id': 'new', 'cwd': str(project), 'prompt': 'inspect backend'}
+    with FileLock(str(runtime / 'vaultin.db') + '.schema.lock'):
+        result = _hook_process(root, 'prompt-submit', payload)
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    assert output['continue'] is True
+    assert 'degraded' in output['systemMessage'].lower()
+    assert 'execution_id=' not in str(output)
+    recovered = _hook_process(root, 'prompt-submit', {**payload, 'turn_id': 'next'})
+    assert recovered.returncode == 0, recovered.stderr
+    assert 'execution_id=' in json.loads(recovered.stdout)['hookSpecificOutput']['additionalContext']
+
+
+def test_storage_failover_never_bypasses_bootstrap_policy(tmp_path: Path) -> None:
+    from filelock import FileLock
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    (root / 'policies/core.yaml').write_text(
+        'critical:\n  deny_actions: [governance_bootstrap]\nproject: {}\n', encoding='utf-8',
+    )
+    runtime = root / '.vaultin-runtime'
+    runtime.mkdir()
+    with FileLock(str(runtime / 'vaultin.db') + '.schema.lock'):
+        result = _hook_process(root, 'prompt-submit', {
+            'session_id': 'denied', 'turn_id': 'new', 'cwd': str(project), 'prompt': 'inspect backend',
+        })
+    assert result.returncode == 2
+    assert 'policy' in result.stderr.lower()
+    assert not result.stdout
+
+
+def test_session_start_reports_degradation_when_ledger_is_busy(tmp_path: Path) -> None:
+    import json
+    from filelock import FileLock
+    root = _fixture_root(tmp_path)
+    runtime = root / '.vaultin-runtime'
+    runtime.mkdir()
+    with FileLock(str(runtime / 'vaultin.db') + '.schema.lock'):
+        result = _hook_process(root, 'session-start', {'session_id': 'busy-start'})
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    assert output['continue'] is True
+    assert 'degraded' in output['systemMessage'].lower()
+
+
+def test_sqlite_writer_contention_is_bounded_and_retry_is_automatic(tmp_path: Path) -> None:
+    import json
+    import sqlite3
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+    database = controller.ledger.database_path
+    payload = {'session_id': 'writer', 'turn_id': 'new', 'cwd': str(project), 'prompt': 'inspect backend'}
+    db = sqlite3.connect(database)
+    try:
+        db.execute('BEGIN IMMEDIATE')
+        result = _hook_process(root, 'prompt-submit', payload)
+        assert result.returncode == 0, result.stderr
+        assert 'degraded' in json.loads(result.stdout)['systemMessage'].lower()
+    finally:
+        db.rollback()
+        db.close()
+    recovered = _hook_process(root, 'prompt-submit', {**payload, 'turn_id': 'retry'})
+    assert recovered.returncode == 0, recovered.stderr
+    assert 'execution_id=' in json.loads(recovered.stdout)['hookSpecificOutput']['additionalContext']
+
+
+def test_invalid_canonical_policy_still_blocks_tools_without_runtime(tmp_path: Path) -> None:
+    root = _fixture_root(tmp_path)
+    (root / 'policies/core.yaml').write_text('critical: [broken', encoding='utf-8')
+    result = _hook_process(root, 'pre-tool', {'session_id': 'bad-policy', 'tool_input': {'command': 'git status'}})
+    assert result.returncode == 2
+    assert 'blocked' in result.stderr.lower()
+    assert not result.stdout
+
+
+def test_duplicate_prompt_recovers_invalid_saved_route(tmp_path: Path) -> None:
+    import json
+    root = _fixture_root(tmp_path)
+    project = _git_project(tmp_path)
+    controller = CodexHookController(root=root, publish_receipts=False)
+    payload = {'session_id': 'bad-route', 'turn_id': 'same', 'cwd': str(project), 'prompt': 'inspect backend'}
+    controller.handle(event='prompt-submit', payload=payload)
+    state = controller.session_store.load('bad-route')
+    assert state is not None and state.execution_id
+    previous = state.execution_id
+    state.route = {'agents': ['unknown']}
+    controller.session_store.save(state)
+    result = _hook_process(root, 'prompt-submit', payload)
+    assert result.returncode == 0, result.stderr
+    assert 'execution_id=' in json.loads(result.stdout)['hookSpecificOutput']['additionalContext']
+    recovered = controller.session_store.load('bad-route')
+    assert recovered is not None and recovered.execution_id != previous
+    assert controller.ledger.execution(previous).status == 'FAILED'

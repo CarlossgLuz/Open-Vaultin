@@ -6,7 +6,12 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import sys
+from datetime import UTC, datetime
+from time import monotonic
+
+from filelock import Timeout as FileLockTimeout
 from typing import Any
 
 import yaml
@@ -23,7 +28,7 @@ from vaultin.orchestrator import ExecutionContext, Orchestrator, TaskRequest
 from vaultin.paths import VaultinPaths
 from vaultin.policy.engine import PolicyEngine
 from vaultin.projects.discovery import ProjectDiscovery
-from vaultin.routing.jev import HttpJevClassifier, RouteProposal, RoutingError
+from vaultin.routing.jev import HttpJevClassifier, RouteProposal, RoutingError, validate_route
 from vaultin.runtime.health import HealthChecker
 from vaultin.runtime.queue import SyncQueue, SyncQueueItem
 from vaultin.skills.catalog import SkillCatalog
@@ -137,10 +142,24 @@ class CodexHookController:
             else publish_receipts
         )
         self.paths = VaultinPaths.from_root(self.root)
-        self.ledger = LedgerStore(self.paths.ledger_db)
+        # Permission checks must not depend on bookkeeping availability. Most
+        # hooks only need policy; open the ledger/session files on first use.
         self.policy_engine = load_policy(self.root)
-        self.session_store = CodexSessionStore(self.paths.runtime / "codex-sessions")
+        self._ledger: LedgerStore | None = None
+        self._session_store: CodexSessionStore | None = None
         self.workspace_tracker = WorkspaceTracker()
+
+    @property
+    def ledger(self) -> LedgerStore:
+        if self._ledger is None:
+            self._ledger = LedgerStore(self.paths.ledger_db, timeout_seconds=0.25)
+        return self._ledger
+
+    @property
+    def session_store(self) -> CodexSessionStore:
+        if self._session_store is None:
+            self._session_store = CodexSessionStore(self.paths.runtime / "codex-sessions")
+        return self._session_store
 
     def _jev(self, *, agent_names: list[str], skill_names: list[str] | None = None):
         try:
@@ -253,8 +272,8 @@ class CodexHookController:
 
     def _session_start(self, payload: dict[str, Any]) -> dict:
         session_id = self._required(payload, "session_id")
-        report = HealthChecker(self.root).run()
-        if report.status != "PASS":
+        report = HealthChecker(self.root).run(ledger_timeout_seconds=0.25)
+        if any(item.status != "PASS" and item.name != "ledger" for item in report.checks):
             blocked = "; ".join(
                 f"{item.name}: {item.detail}" for item in report.checks if item.status != "PASS"
             )
@@ -272,13 +291,20 @@ class CodexHookController:
                     state,
                     reason="new SessionStart superseded an inherited active execution",
                 )
-        return {
+        response = {
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
                 "additionalContext": "Vaultin active. Use governed routing and evidence-backed finalization.",
             },
         }
+        if report.status != "PASS":
+            _append_hook_error("session-start", RuntimeError("execution ledger unavailable; bookkeeping degraded"))
+            response["systemMessage"] = (
+                "Vaultin bookkeeping degraded; tool policy checks remain active. "
+                "The execution ledger will be retried automatically on the next prompt."
+            )
+        return response
 
     def _prompt_submit(self, payload: dict[str, Any]) -> dict:
         session_id = self._required(payload, "session_id")
@@ -303,10 +329,20 @@ class CodexHookController:
                     elif state.turn_id == turn_id and state.request and state.route:
                         # Codex may deliver the same turn hook more than once. Reuse
                         # the durable execution instead of allocating a duplicate.
-                        return self._route_context(
-                            state.execution_id,
-                            RouteProposal.model_validate(state.route),
-                        )
+                        try:
+                            TaskRequest.model_validate(state.request)
+                            route = validate_route(
+                                RouteProposal.model_validate(state.route),
+                                registry=AgentRegistry.load(self.root),
+                                skills=SkillCatalog.load(self.root),
+                            )
+                        except (ValueError, RoutingError):
+                            self._recover_active_execution(
+                                state,
+                                reason="saved execution context invalid; rebuilding route",
+                            )
+                        else:
+                            return self._route_context(state.execution_id, route)
                     else:
                         # A previous turn reached the next UserPromptSubmit without
                         # Stop/Interrupt finalization. Fail that orphan visibly and
@@ -628,7 +664,7 @@ def _is_stale_execution_conflict(exc: Exception) -> bool:
     return active and remediation
 
 
-def _append_hook_error(event: str, exc: Exception) -> None:
+def _append_hook_error(event: str, exc: Exception, *, elapsed_seconds: float | None = None) -> None:
     try:
         log_dir = Path.home() / ".vaultin"
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -636,7 +672,10 @@ def _append_hook_error(event: str, exc: Exception) -> None:
             handle.write(
                 json.dumps(
                     {
+                        "timestamp": datetime.now(UTC).isoformat(),
                         "event": event,
+                        "elapsed_seconds": elapsed_seconds,
+                        "runtime_source": str(Path(__file__).resolve()),
                         "error_type": type(exc).__name__,
                         "message": str(exc),
                     },
@@ -656,6 +695,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--root", type=Path)
     args = parser.parse_args(argv)
+    started = monotonic()
     try:
         payload = json.load(sys.stdin)
         root = resolve_root(args.root)
@@ -664,7 +704,33 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("\n")
         return 0
     except Exception as exc:
-        _append_hook_error(args.event, exc)
+        _append_hook_error(args.event, exc, elapsed_seconds=round(monotonic() - started, 3))
+        # Storage contention is not an authorization decision. Revalidate the
+        # canonical policy before releasing an untracked turn; never fabricate a
+        # route, execution id, receipt or successful governance result.
+        if args.event in {"session-start", "prompt-submit"} and isinstance(
+            exc, (FileLockTimeout, sqlite3.DatabaseError, OSError)
+        ):
+            try:
+                policy = load_policy(root)
+                decision = policy.evaluate(ActionContext(action="governance_bootstrap", user_authorized=True))
+                if decision.kind is PolicyDecisionKind.DENY:
+                    raise GovernanceBlocked(decision.reason)
+            except Exception:
+                sys.stderr.write("Vaultin hook blocked: canonical policy unavailable or denied bootstrap.\n")
+                return 2
+            json.dump(
+                {
+                    "continue": True,
+                    "systemMessage": (
+                        "Vaultin bookkeeping degraded; this turn has no verified execution receipt. "
+                        "Tool policy checks remain active. Storage will be retried automatically on the next hook."
+                    ),
+                },
+                sys.stdout,
+            )
+            sys.stdout.write("\n")
+            return 0
         # A stale execution is a lifecycle bookkeeping failure, not a policy
         # decision. Never deadlock the user's next prompt on this condition.
         # SessionStart/UserPromptSubmit already perform normal recovery; this is

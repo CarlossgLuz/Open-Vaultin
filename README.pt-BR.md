@@ -432,6 +432,8 @@ O conhecimento de projeto canônico fica em `vaults/projects/<project-slug>/`. R
 
 ## Solução de problemas
 
+A recuperação de sessões é automática: arquivos locais de sessão inválidos são preservados em quarentena, rotas salvas inconsistentes são reconstruídas e locks de registro são tentados novamente nos hooks seguintes. A checagem de políticas das ferramentas não depende do banco de execuções. Falhas de registro aparecem como estado degradado, sem afirmar que existe um recibo validado. Erros nas políticas/configuração canônica continuam bloqueando. Veja [recuperação automática](docs/troubleshooting.md#automatic-recovery-and-hook-latency).
+
 Comece pela etapa 5, usando o root correto. Depois confira:
 
 - Python/Git e suporte a venv/pip;

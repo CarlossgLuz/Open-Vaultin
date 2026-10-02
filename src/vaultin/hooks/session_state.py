@@ -3,10 +3,11 @@ from __future__ import annotations
 from hashlib import sha256
 from pathlib import Path
 import subprocess
+from uuid import uuid4
 from typing import Any
 
 from filelock import FileLock
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class WorkspaceSnapshot(BaseModel):
@@ -37,7 +38,7 @@ class CodexSessionStore:
     def _lock(self, session_id: str) -> FileLock:
         return FileLock(str(self._path(session_id)) + ".lock", timeout=1)
 
-    def transaction_lock(self, session_id: str, *, timeout: float = 5) -> FileLock:
+    def transaction_lock(self, session_id: str, *, timeout: float = 0.5) -> FileLock:
         """Serialize lifecycle transitions for one Codex session across hook processes."""
         return FileLock(str(self._path(session_id)) + ".txn.lock", timeout=timeout)
 
@@ -46,7 +47,17 @@ class CodexSessionStore:
         with self._lock(session_id):
             if not path.is_file():
                 return None
-            return CodexSessionState.model_validate_json(path.read_text(encoding="utf-8"))
+            try:
+                state = CodexSessionState.model_validate_json(path.read_text(encoding="utf-8-sig"))
+                if state.session_id != session_id:
+                    raise ValueError("session identity mismatch")
+                return state
+            except (ValidationError, UnicodeError, ValueError):
+                # Derived session state can be regenerated. Preserve the damaged
+                # file locally for diagnosis; do not erase or rewrite the ledger.
+                backup = path.with_name(path.name + ".invalid-" + uuid4().hex)
+                path.replace(backup)
+                return None
 
     def save(self, state: CodexSessionState) -> None:
         path = self._path(state.session_id)
