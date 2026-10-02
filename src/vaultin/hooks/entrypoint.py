@@ -464,9 +464,21 @@ class CodexHookController:
             if state is None or not state.execution_id:
                 return {}
 
-            # Ignore a late Stop from an older turn; never finalize a newer turn.
+            # A Stop can arrive with a stale/mismatched turn id after Codex aborts,
+            # retries, or restarts a turn. Leaving the execution active here deadlocks
+            # the next UserPromptSubmit. Prefer releasing the orphaned execution; the
+            # normal same-turn path below still performs evidence-backed finalization.
             if state.turn_id and state.turn_id != turn_id:
-                return {}
+                self._recover_active_execution(
+                    state,
+                    reason=(
+                        f"Stop turn mismatch: received {turn_id}; active turn "
+                        f"{state.turn_id}. Releasing orphaned execution."
+                    ),
+                )
+                return {
+                    "systemMessage": "Vaultin released an orphaned execution after a Stop turn mismatch."
+                }
 
             if payload.get("stop_hook_active") is True:
                 self._recover_active_execution(
@@ -543,6 +555,13 @@ class CodexHookController:
             if state is None or not state.execution_id:
                 return {}
             if state.turn_id and state.turn_id != turn_id:
+                self._recover_active_execution(
+                    state,
+                    reason=(
+                        f"Interrupt turn mismatch: received {turn_id}; active turn "
+                        f"{state.turn_id}. Releasing orphaned execution."
+                    ),
+                )
                 return {}
             self._recover_active_execution(
                 state,
@@ -601,6 +620,14 @@ def load_policy(root: Path) -> PolicyEngine:
     return PolicyEngine.from_mapping(raw)
 
 
+def _is_stale_execution_conflict(exc: Exception) -> bool:
+    """Recognize stale lifecycle conflicts without weakening policy denials."""
+    message = str(exc).casefold()
+    active = "execution" in message and ("still active" in message or "already active" in message)
+    remediation = "finalize" in message or "recover" in message or "starting another turn" in message
+    return active and remediation
+
+
 def _append_hook_error(event: str, exc: Exception) -> None:
     try:
         log_dir = Path.home() / ".vaultin"
@@ -638,6 +665,30 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except Exception as exc:
         _append_hook_error(args.event, exc)
+        # A stale execution is a lifecycle bookkeeping failure, not a policy
+        # decision. Never deadlock the user's next prompt on this condition.
+        # SessionStart/UserPromptSubmit already perform normal recovery; this is
+        # the final fail-open guard for legacy/stale runtime state.
+        if args.event == "prompt-submit" and _is_stale_execution_conflict(exc):
+            json.dump(
+                {
+                    "continue": True,
+                    "systemMessage": (
+                        "Vaultin detected stale execution state; the prompt was released "
+                        "instead of being blocked. Start/Stop lifecycle recovery will reconcile it."
+                    ),
+                    "hookSpecificOutput": {
+                        "hookEventName": "UserPromptSubmit",
+                        "additionalContext": (
+                            "Vaultin lifecycle recovery: continue this turn; do not treat the stale "
+                            "execution as an authorization denial."
+                        ),
+                    },
+                },
+                sys.stdout,
+            )
+            sys.stdout.write("\n")
+            return 0
         # Exit code 2 has event-specific control semantics in Codex. In
         # particular, Stop + exit 2 asks the model to continue the turn and can
         # create a loop if finalization itself is failing. Cleanup/telemetry
