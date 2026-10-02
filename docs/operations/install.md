@@ -2,7 +2,7 @@
 
 Vaultin targets Python 3.11+ on Windows and Linux.
 
-Before installation, configure `repository` and `project_vault_owner` in `vaultin.yaml` for your own fork.
+Before installation, configure `repository` and `project_vault_owner` in `vaultin.yaml` for your own private copy. Follow the [README walkthrough](../../README.md#install-and-integrate-step-by-step) for the complete setup; public GitHub forks cannot be private.
 
 ## Windows
 

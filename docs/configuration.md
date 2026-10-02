@@ -141,7 +141,11 @@ Example:
 export TYPESAFE_API_KEY="..."
 ```
 
-Do not commit this value.
+Do not commit this value. Vaultin does not automatically load `.env`; the launching client/hook process must inherit this variable. For key acquisition, Windows user persistence, Linux shell setup and live routing verification, follow [README step 3](../README.md#3-configure-the-jev-api-key-optional).
+
+### `GITHUB_TOKEN`
+
+Optional credential read by the GitHub private-replica provisioning helper. It is separate from the TypeSafe key and Git credential manager. The helper uses `/user/repos` for the authenticated user; it does not implement organization repository creation. Do not put this token into YAML or project notes.
 
 ### `VAULTIN_MCP_ALLOW_PUBLISH`
 

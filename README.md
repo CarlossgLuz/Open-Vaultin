@@ -1,5 +1,7 @@
 # Open-Vaultin
 
+**Language:** **English** | [Português (Brasil)](README.pt-BR.md)
+
 [![CI](https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml/badge.svg)](https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -98,9 +100,9 @@ In practice, Vaultin sits between the AI client and the governed execution lifec
 
 For testing, you can clone this repository directly.
 
-For regular personal use, the recommended setup is to **fork Open-Vaultin into a private repository**.
+For regular personal use, create an **independent private repository** containing a copy of Open-Vaultin. GitHub forks of public repositories are public; do not use a public fork for private project knowledge.
 
-Your private fork can safely accumulate your own:
+Your private copy can accumulate your own:
 
 - project vaults;
 - knowledge;
@@ -147,206 +149,204 @@ py --version
 
 ---
 
-# Quick start
+# Install and integrate, step by step
 
-## 1. Fork or clone the repository
+Follow these steps on **the computer and OS account that runs Codex**. A Windows install does not configure WSL, a remote VM, a container or a browser-hosted environment. Install separately inside the environment where the client executes hooks.
 
-### Option A — Testing only
+This guide uses `octocat/Vaultin-Personal` as an example. Replace `octocat` with your GitHub username and `Vaultin-Personal` with your chosen repository name. Never paste the example API keys literally.
 
-If you only want to evaluate Vaultin:
+## 1. Prepare your tools and private copy
+
+Check Python 3.11+, Git and your installed Codex client. On Linux use `python3 --version`; on Windows use `python --version`. If Windows only exposes `py`, set `$env:PYTHON = "py"` before running the installer.
+
+```text
+git --version
+```
+
+If using Codex CLI, also check `codex --version` and finish its own authentication first. Vaultin does not install Codex or sign you in. Hook support depends on the client/version; writing configuration files alone does not prove the client runs them.
+
+For a local evaluation only:
 
 ```bash
 git clone https://github.com/CarlossgLuz/Open-Vaultin.git
 cd Open-Vaultin
 ```
 
-### Option B — Recommended for personal use
+For personal use with private knowledge:
 
-Create a **private fork** of Open-Vaultin in your GitHub account, then clone your fork:
+1. In GitHub, create a new repository such as `Vaultin-Personal`, select **Private**, and leave it empty (no generated README, license or `.gitignore`).
+2. Clone Open-Vaultin to a stable local directory, then point `origin` at your new repository:
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/Open-Vaultin.git
-cd Open-Vaultin
+git clone https://github.com/CarlossgLuz/Open-Vaultin.git Vaultin-Personal
+cd Vaultin-Personal
+git remote rename origin upstream
+git remote add origin https://github.com/octocat/Vaultin-Personal.git
+git remote -v
+git push -u origin main
 ```
 
-Replace `YOUR_GITHUB_USER` with your real GitHub username or organization.
+These commands work in PowerShell and Bash. Authenticate using your Git credential manager or SSH setup when Git requires it. Keep the MIT license. `origin` must be your private repository; `upstream` is the public source for future updates. See GitHub's [repository duplication guide](https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository).
 
-Example:
+Keep this directory: the installer uses it directly, rather than copying all runtime code elsewhere. Moving/deleting it breaks the installed paths; rerun the installer from the new location if you move it.
 
-```text
-YOUR_GITHUB_USER = octocat
-```
+## 2. Edit the configuration in that directory
 
-Then:
-
-```text
-https://github.com/octocat/Open-Vaultin.git
-```
-
----
-
-## 2. Configure `vaultin.yaml`
-
-This is the part most users need to change before installation.
-
-Open:
-
-```text
-vaultin.yaml
-```
-
-The default file looks like this:
+Open **`vaultin.yaml` in the root of the checkout you just cloned**, using your editor. Change these two values:
 
 ```yaml
-version: 1
-repository: YOUR_GITHUB_USER/Open-Vaultin
-project_vault_owner: YOUR_GITHUB_USER
-project_vault_prefix: vault-
-fail_closed: true
-runtime_dir_name: .vaultin-runtime
-```
-
-### What do I actually need to edit?
-
-For a standard installation, **you normally only need to replace `YOUR_GITHUB_USER` in two places**.
-
-For example, if your GitHub username is:
-
-```text
-octocat
-```
-
-Change this:
-
-```yaml
-repository: YOUR_GITHUB_USER/Open-Vaultin
-project_vault_owner: YOUR_GITHUB_USER
-```
-
-To this:
-
-```yaml
-repository: octocat/Open-Vaultin
+repository: octocat/Vaultin-Personal
 project_vault_owner: octocat
 ```
 
-Your final configuration would look like:
+`repository` is the repository that holds your Vaultin configuration/knowledge, **not the application repository you want Codex to work on**. If you renamed your private copy, include that actual name. For evaluation without your own remote, use `CarlossgLuz/Open-Vaultin` as the repository identifier and keep publication disabled.
+
+The complete example is:
 
 ```yaml
 version: 1
-repository: octocat/Open-Vaultin
+repository: octocat/Vaultin-Personal
 project_vault_owner: octocat
 project_vault_prefix: vault-
 fail_closed: true
 runtime_dir_name: .vaultin-runtime
 ```
 
-### Configuration fields
-
-| Field | Change it? | Meaning |
+| Field | What to do | Meaning |
 |---|---|---|
-| `version` | No | Vaultin configuration schema version. Keep `1` for the current V1 format. |
-| `repository` | **Yes** | GitHub repository used as the canonical Vaultin repository. |
-| `project_vault_owner` | **Yes** | GitHub user or organization that will own project-vault repositories. |
-| `project_vault_prefix` | Usually no | Prefix used for project-vault repository names. Default: `vault-`. |
-| `fail_closed` | Usually no | Declares fail-closed governance intent. Keep `true` unless you explicitly understand the consequences of changing it. |
-| `runtime_dir_name` | Usually no | Name of the local runtime-state directory. Default: `.vaultin-runtime`. |
+| `version` | Keep `1` | Configuration schema version. |
+| `repository` | Set your actual `owner/repository` | Canonical Vaultin repository identifier. |
+| `project_vault_owner` | Set your GitHub username | Owner validated when provisioning project-vault replicas. The current GitHub helper creates repositories for the authenticated user via `/user/repos`; organization provisioning is not implemented by this helper. |
+| `project_vault_prefix` | Usually keep `vault-` | A project `example-api` has replica name `vault-example-api`. |
+| `fail_closed` | Keep `true` | Governance intent; it does not prove the client provides full enforcement. |
+| `runtime_dir_name` | Keep `.vaultin-runtime` | Local operational state directory inside this checkout. |
 
-### Example: project vault naming
+Unknown YAML fields are rejected. **Do not add `api_key`, `token` or `TYPESAFE_API_KEY` to this file.** For your private copy, commit the non-secret configuration:
 
-With:
-
-```yaml
-project_vault_prefix: vault-
+```bash
+git add vaultin.yaml
+git commit -m "chore: configure personal Vaultin repository"
+git push origin main
 ```
 
-A project called:
+## 3. Configure the JEV API key (optional)
 
-```text
-example-api
-```
+**Where does the token go?** Into the environment variable **`TYPESAFE_API_KEY` on the machine running Codex**. Vaultin reads it from the hook process environment. It does **not** automatically load `.env`, and there is no token field in `vaultin.yaml` or the Vaultin plugin settings.
 
-maps to a project-vault name such as:
+1. Open the [TypeSafe console API keys page](https://console.typesafe.ai/keys), sign in, and obtain an API key using the console's current controls. Check service access and billing in your account.
+2. Configure that key using the OS instructions below.
+3. Restart/launch Codex from an environment that actually contains the variable.
 
-```text
-vault-example-api
-```
+Use a **TypeSafe API key**, not a GitHub token or a Codex/OpenAI credential. The current adapter calls `https://api.typesafe.ai/v1/systemone`, uses `jev-latest`, and supplies `Authorization: Bearer <key>` itself. Store the raw key without adding `Bearer `. No separate JEV daemon, router hook or SDK is required for this HTTP integration. See the [official API reference](https://api.typesafe.ai/redoc).
 
-### Important: secrets do not belong in `vaultin.yaml`
+When enabled, the routing request sends the task text, working directory and current project identifier to TypeSafe. Use a non-sensitive prompt for validation.
 
-Do not place API keys, tokens, passwords or other credentials in this file.
+### Windows PowerShell: current session and persistent user setting
 
-For example, `TYPESAFE_API_KEY` must be configured as an **environment variable**, not written into YAML.
-
----
-
-## 3. Optional — configure JEV / TypeSafe
-
-JEV routing is optional.
-
-If you do not configure it, Vaultin uses its deterministic fallback path.
-
-### Windows PowerShell
-
-For the current terminal session:
+Paste this into **PowerShell**. Enter your real key at the hidden prompt; this avoids putting the key in the command history:
 
 ```powershell
-$env:TYPESAFE_API_KEY = "your-key"
+$JevSecret = Read-Host "TypeSafe API key" -AsSecureString
+$env:TYPESAFE_API_KEY = [System.Net.NetworkCredential]::new("", $JevSecret).Password
+[Environment]::SetEnvironmentVariable("TYPESAFE_API_KEY", $env:TYPESAFE_API_KEY, "User")
+Remove-Variable JevSecret
 ```
 
-### Linux
+This sets the current terminal variable and persists it for your Windows user. The persisted environment value is **not an encrypted secret vault**; do not use this method on a shared account.
+
+Close Codex completely and reopen it. Existing processes do not receive the updated environment automatically. For the CLI, run `codex` from this same PowerShell terminal. For a desktop client, also restart any launcher/IDE that was already running; if it still inherits the old environment, sign out of Windows and back in.
+
+Verify presence **without printing the key**:
+
+```powershell
+if ([string]::IsNullOrWhiteSpace($env:TYPESAFE_API_KEY)) {
+    "TYPESAFE_API_KEY: missing in this terminal"
+} else {
+    "TYPESAFE_API_KEY: configured in this terminal"
+}
+```
+
+### Linux Bash: current terminal
 
 ```bash
-export TYPESAFE_API_KEY="your-key"
+read -rsp 'TypeSafe API key: ' TYPESAFE_API_KEY
+printf '\n'
+export TYPESAFE_API_KEY
 ```
 
-Do not commit API keys to Git.
+Run `codex` from this same terminal after installation. The key expires from this shell environment when you close it; setting it here does not update an already-running desktop client.
 
----
+### Linux Bash: optional persistence
 
-## 4. Install Vaultin
+If you want to avoid entering the key for every new terminal, keep it in a restricted local file **outside the repository**:
 
-### Windows
+```bash
+mkdir -p "$HOME/.config/vaultin"
+touch "$HOME/.config/vaultin/jev.env"
+chmod 600 "$HOME/.config/vaultin/jev.env"
+```
 
-From the repository root:
+Open `~/.config/vaultin/jev.env` in your editor and add one line, replacing the example with your real key:
+
+```bash
+export TYPESAFE_API_KEY='PASTE_YOUR_REAL_TYPESAFE_KEY_HERE'
+```
+
+Load it before launching Codex:
+
+```bash
+source "$HOME/.config/vaultin/jev.env"
+codex
+```
+
+For interactive Bash terminals, you may add `source "$HOME/.config/vaultin/jev.env"` to `~/.bashrc`. This is a plaintext file protected by filesystem permissions, not an encrypted secret store. A desktop launcher, systemd service, WSL instance or container does not automatically source your `.bashrc`; supply the variable through that environment's own launcher/secret configuration. Zsh users must adapt the shell startup file.
+
+Verify presence without printing the key:
+
+```bash
+if [ -n "${TYPESAFE_API_KEY:-}" ]; then
+  printf 'TYPESAFE_API_KEY: configured in this terminal\n'
+else
+  printf 'TYPESAFE_API_KEY: missing in this terminal\n'
+fi
+```
+
+**Skipping JEV is supported.** Without a key, Vaultin uses deterministic fallback. A configured variable proves only that a key is present, not that it is valid or that JEV accepted a request.
+
+## 4. Run the installer from the Vaultin checkout
+
+Windows PowerShell:
 
 ```powershell
 .\scripts\install.ps1
 ```
 
-### Linux
+Linux Bash:
 
 ```bash
 bash scripts/install.sh
 ```
 
-The installer:
+If Windows blocks script execution, review the script and your machine's policy before changing it; follow organization policy on managed machines. On Linux, Python must include venv/pip support. Installation requires access to the configured Python package index.
 
-1. creates an isolated environment under `~/.vaultin` or `%USERPROFILE%\.vaultin`;
-2. installs Vaultin in editable mode;
-3. registers the local Codex integration;
-4. configures Vaultin lifecycle hooks;
-5. runs the installation health gate.
+The installer creates `~/.vaultin/venv`, installs this checkout in editable mode, stores its absolute path in `~/.vaultin/root`, creates CLI/hook wrappers and registers the Codex plugin and hooks. On Windows, `~` means your user profile directory.
 
-The canonical Vaultin repository path is stored under:
+| User file/directory | What the installer writes |
+|---|---|
+| `~/.vaultin/root` | Path to the canonical Vaultin checkout. |
+| `~/.vaultin/bin/` | CLI and lifecycle hook wrappers. |
+| `~/.agents/plugins/marketplace.json` | Local plugin marketplace entry. |
+| `~/.codex/config.toml` | Enabled Vaultin plugin entry. |
+| `~/.codex/hooks.json` | User lifecycle hooks; unrelated groups are preserved. |
+| `~/.codex/plugins/vaultin/` | Local plugin assets. |
 
-### Windows
+It replaces the installed Vaultin plugin directory/cache and finishes with the core health gate. It does **not** save your TypeSafe key, install Codex, authenticate GitHub, or configure every other AI client.
 
-```text
-%USERPROFILE%\.vaultin\root
-```
+The current Windows hook helper rejects a wrapper path containing whitespace (for example a Windows user-profile path with spaces). Treat that installer error as an unsupported path, rather than assuming installation succeeded.
 
-### Linux
+## 5. Check the installed runtime
 
-```text
-~/.vaultin/root
-```
-
----
-
-## 5. Verify the installation
-
-Run:
+While still in the **Vaultin checkout**, run:
 
 ```text
 vaultinctl health
@@ -354,35 +354,136 @@ vaultinctl doctor
 vaultinctl status
 ```
 
-### What should these commands tell me?
+If `vaultinctl` is not found, use the actual installed wrapper:
 
-- `vaultinctl health` checks whether the core Vaultin installation is healthy.
-- `vaultinctl doctor` performs broader diagnostics for configuration and integrations.
-- `vaultinctl status` shows the current Vaultin/runtime state.
+Windows PowerShell:
 
-If the commands are unavailable immediately after installation, open a new terminal and try again.
-
-After the first installation or a material lifecycle-hook change, restart the AI client.
-
-If the client asks you to review or trust local hooks, perform that one-time review before continuing.
-
----
-
-## 6. Start using Vaultin
-
-Once installed, normal AI-client execution goes through the Vaultin lifecycle:
-
-```text
-SessionStart
-→ UserPromptSubmit
-→ JEV / deterministic routing
-→ PreToolUse / PostToolUse
-→ Stop or Interrupt
-→ evidence + receipt
-→ SessionEnd
+```powershell
+& "$HOME\.vaultin\bin\vaultinctl.cmd" health --root (Get-Location).Path
+& "$HOME\.vaultin\bin\vaultinctl.cmd" doctor --root (Get-Location).Path
+& "$HOME\.vaultin\bin\vaultinctl.cmd" status --root (Get-Location).Path
 ```
 
-Vaultin tracks execution state and can recover stale or interrupted executions so they do not permanently block later prompts.
+Linux Bash:
+
+```bash
+"$HOME/.vaultin/bin/vaultinctl" health --root "$PWD"
+"$HOME/.vaultin/bin/vaultinctl" doctor --root "$PWD"
+"$HOME/.vaultin/bin/vaultinctl" status --root "$PWD"
+```
+
+On Windows the installer adds its wrapper directory to the user/current PATH. On Linux it links the CLI under `~/.local/bin`; that directory must be on your shell's PATH to use the short command.
+
+| Command | Actual current behavior |
+|---|---|
+| `health` | Checks configuration, active source checkout, policy, workflow, agents, skills and ledger. Expected overall result: `PASS`. |
+| `doctor` | Prints runtime source/root and runs the same core health checks. |
+| `status` | Runs core health checks and prints `pending_sync`. |
+
+These commands **do not test the TypeSafe API key, GitHub authentication, or whether your live Codex client executes hooks**. Their default `--root` is the current working directory. From an application project, explicitly pass the absolute **Vaultin checkout** path; do not pass the application path as the governance root.
+
+## 6. Start a real Codex session in your application project
+
+1. Completely restart Codex after installation.
+2. Check that the installed Vaultin plugin is enabled and review/trust the local hooks if the client asks.
+3. Open the application repository you actually want to work on. Keep the Vaultin checkout in its original location.
+4. For Codex CLI, change to that application's directory and launch `codex` from the terminal where you configured `TYPESAFE_API_KEY`.
+5. Send a harmless task, for example: **“Explain this repository's structure without editing files.”**
+
+The installed hook wrapper pins the Vaultin checkout with `--root`; the active application's working directory identifies the project. You do not need to copy `vaultin.yaml`, the token or the hooks into each application repository.
+
+Compatible clients can run the installed events `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `Interrupt` and `SessionEnd`. Vaultin records routing and execution state locally. Hook enforcement still depends on what the host actually implements; installing Vaultin on your PC does not attach it to an unrelated remote/browser session.
+
+## 7. Verify that JEV actually routed the task
+
+After the test prompt, return to the **Vaultin checkout** in another terminal. Use the installed Python to inspect the latest recorded routing event. This reads the ledger without printing the key or the task text.
+
+Windows PowerShell:
+
+```powershell
+@'
+import json, sqlite3
+from pathlib import Path
+from vaultin.paths import VaultinPaths
+path = VaultinPaths.from_root(Path.cwd()).ledger_db
+with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as db:
+    row = db.execute("SELECT execution_id, payload_json FROM events WHERE kind = 'ROUTED' ORDER BY created_at DESC, sequence DESC LIMIT 1").fetchone()
+if row is None:
+    print("No routing event yet: check live-client hook execution.")
+else:
+    route = json.loads(row[1])
+    print("execution_id:", row[0])
+    print("source:", route.get("source"))
+    print("fallback_reason:", route.get("fallback_reason"))
+'@ | & "$HOME\.vaultin\venv\Scripts\python.exe" -
+```
+
+Linux Bash:
+
+```bash
+"$HOME/.vaultin/venv/bin/python" - <<'PYTHON'
+import json, sqlite3
+from pathlib import Path
+from vaultin.paths import VaultinPaths
+path = VaultinPaths.from_root(Path.cwd()).ledger_db
+with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as db:
+    row = db.execute("SELECT execution_id, payload_json FROM events WHERE kind = 'ROUTED' ORDER BY created_at DESC, sequence DESC LIMIT 1").fetchone()
+if row is None:
+    print("No routing event yet: check live-client hook execution.")
+else:
+    route = json.loads(row[1])
+    print("execution_id:", row[0])
+    print("source:", route.get("source"))
+    print("fallback_reason:", route.get("fallback_reason"))
+PYTHON
+```
+
+| Result | Meaning / next action |
+|---|---|
+| `source: jev` | JEV returned a route accepted by Vaultin for this execution. |
+| `source: fallback` | Deterministic routing was used. Read `fallback_reason`; this does not by itself indicate failed governance. |
+| `source: explicit` | A supported `workflow=...` directive chose the workflow before JEV. Omit the directive when testing JEV. |
+| `jev_http_error` | HTTP/network/timeout failure; the current classifier does not expose the HTTP status. Check your TypeSafe account/key, connectivity and timeout. |
+| `jev_schema_error` | Response did not satisfy the adapter's expected contract. |
+| `low_agent_confidence` / `low_workflow_confidence` | JEV answered, but the required decision confidence was too low. |
+| No event / missing ledger | The prompt may not have reached the hooks, may have failed before routing, or you are inspecting the wrong checkout. Check the client's hook output and `~/.vaultin/hook-errors.log` if present. |
+
+The last event can belong to another concurrent session; use its `execution_id` to match the tested turn. A `health: PASS` result alone is not proof of JEV integration.
+
+## 8. Understand GitHub synchronization and secondary clients
+
+JEV routing needs only `TYPESAFE_API_KEY`. Normal Git push/pull needs your Git credentials. The optional project-replica provisioning helper separately reads **`GITHUB_TOKEN`** and creates private repositories for the authenticated personal account; its token must have the permissions required for that operation. Logging into Git does not automatically set `GITHUB_TOKEN`, and the YAML does not create repositories by itself.
+
+Do not enable publication just to test installation. Receipts remain local by default (`VAULTIN_PUBLISH_RECEIPTS` unset); MCP publication is also disabled (`VAULTIN_MCP_ALLOW_PUBLISH` unset). Review knowledge and metadata before publishing anything, even to a private remote.
+
+Other clients require their own integration. For a client supporting **stdio MCP**, configure its server command as the absolute installed executable:
+
+- Windows: `C:\Users\YOUR_USER\.vaultin\venv\Scripts\vaultin-mcp.exe`
+- Linux: `/home/YOUR_USER/.vaultin/venv/bin/vaultin-mcp`
+
+No server arguments are needed for the default root recorded by the installer. The host starts the process; exact settings location/JSON format depend on that client. An MCP connection provides Vaultin knowledge tools, **not automatic Codex lifecycle hooks or JEV routing for that client's every prompt**. See [Client integrations](docs/client-integrations.md).
+
+## 9. Update or disable the integration
+
+For your private copy, fetch reviewed upstream updates, merge them and rerun the installer when dependencies, wrappers or hook definitions change. Resolve any conflicts in your own configuration before continuing:
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+Restart Codex and repeat the health and live-session checks after a material update.
+
+To disable JEV, remove `TYPESAFE_API_KEY` from the current environment and its persistence location, then restart the client. On Windows:
+
+```powershell
+Remove-Item Env:TYPESAFE_API_KEY -ErrorAction SilentlyContinue
+[Environment]::SetEnvironmentVariable("TYPESAFE_API_KEY", $null, "User")
+```
+
+On Linux run `unset TYPESAFE_API_KEY` and remove the export/source from your local secret/startup file. This leaves deterministic routing available. Revoke the key in TypeSafe if you want to invalidate the credential itself.
+
+There is currently no automatic uninstaller. To disable Vaultin entirely, remove only its hook groups (commands containing `vaultinctl-hook`) from `~/.codex/hooks.json`, disable the Vaultin plugin entry in `~/.codex/config.toml`, and restart Codex. Preserve other plugins/hooks and back up user configuration before manual edits. Disabling only the plugin can leave the separately installed user hooks active.
 
 ---
 
@@ -409,11 +510,7 @@ JEV does **not** replace policy enforcement.
 
 Vaultin also exposes a narrow MCP interface for secondary AI clients.
 
-Start it with:
-
-```text
-vaultin-mcp
-```
+Use the absolute executable under `~/.vaultin/venv/bin/` (Linux) or `~/.vaultin/venv/Scripts/` (Windows), as shown in step 8. The installer does not add this venv directory to PATH.
 
 The MCP interface is intentionally restricted. It exposes canonical knowledge and project-vault operations without turning Vaultin into a generic filesystem server.
 
@@ -426,7 +523,8 @@ Git publication through MCP is disabled by default and requires explicit opt-in.
 | Variable | Required? | Purpose |
 |---|---|---|
 | `VAULTIN_ROOT` | No | Overrides the canonical Vaultin repository path. |
-| `TYPESAFE_API_KEY` | No | Enables JEV / TypeSafe HTTP routing. |
+| `TYPESAFE_API_KEY` | No | Raw TypeSafe key inherited by the client/hooks; see step 3. |
+| `GITHUB_TOKEN` | Only for replica provisioning | GitHub API authentication for the optional private-repository helper; separate from Git credentials. |
 | `VAULTIN_MCP_ALLOW_PUBLISH` | No | Enables Git publication from MCP when explicitly opted in. |
 | `VAULTIN_PUBLISH_RECEIPTS` | No | Enables publication of execution receipts. Disabled by default. |
 | `VAULTIN_JEV_TIMEOUT_SECONDS` | No | Controls the JEV request timeout within the allowed range. |
@@ -557,7 +655,8 @@ Before submitting changes:
 1. read [CONTRIBUTING.md](CONTRIBUTING.md);
 2. remove personal/private environment data from logs and examples;
 3. run the test suite;
-4. make sure documentation matches the actual runtime behavior.
+4. make sure documentation matches the actual runtime behavior;
+5. update both English and PT-BR README versions when changing setup instructions.
 
 ---
 
