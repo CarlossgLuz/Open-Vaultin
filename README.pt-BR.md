@@ -6,7 +6,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Licença MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-O **Open-Vaultin** é a distribuição open-source do Vaultin: uma camada local de governança e conhecimento durável para desenvolvimento de software com IA.
+O **Open-Vaultin** é um projeto autoral **open source, independente e em evolução contínua** de **AI Agent Harness Governance**: uma camada local de governança e conhecimento durável para engenharia de software com IA.
+
+Baseado em princípios de **Harness Engineering**, o Vaultin organiza controles, contexto e evidências ao redor de clientes de programação com IA — não substitui o runtime nem o loop autônomo principal do agente. O **JEV / TypeSafe System One** pode atuar como **modelo decisor** no roteamento de tarefas, com fallback determinístico quando indisponível.
 
 Ele centraliza agentes, skills, políticas, roteamento, histórico de execução, conhecimento dos projetos e evidências. A integração principal é com o Codex, por meio de plugin local e hooks de ciclo de vida. Outros clientes podem acessar ferramentas de conhecimento via MCP.
 
