@@ -7,7 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status: Early V1](https://img.shields.io/badge/status-early%20V1-orange.svg)](CHANGELOG.md)
 
-**Open-Vaultin** is the open-source distribution of Vaultin: a local-first governance and durable-knowledge layer for AI-assisted software engineering.
+**Open-Vaultin** is an independent, continuously evolving **open-source AI Agent Harness Governance** project: a local-first governance and durable-knowledge layer for AI-assisted software engineering.
+
+Built around **harness engineering** principles, it provides the controls and context around an AI coding client—not a replacement autonomous agent runtime. Its purpose is to make agent-assisted workflows more structured, observable and auditable. JEV / TypeSafe System One provides optional **decision-model-based task routing**; deterministic fallback remains available.
 
 Vaultin provides a shared and auditable control plane for **agents, skills, policies, routing, execution lifecycle, project knowledge, evidence and Git-backed synchronization**.
 
