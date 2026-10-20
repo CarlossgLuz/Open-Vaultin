@@ -1,10 +1,15 @@
-# Open-Vaultin
+<p align="center">
+  <img src="assets/vaultin-mark.webp" alt="Logo do Vaultin — emblema geométrico amarelo e cinza-escuro" width="144" height="144" />
+</p>
 
-**Idioma:** [English](README.md) | **Português (Brasil)**
-
-[![CI](https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml/badge.svg)](https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Licença MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<h1 align="center">Open-Vaultin</h1>
+<p align="center"><strong>Governança de harness para agentes de IA</strong></p>
+<p align="center"><strong>Idioma:</strong> <a href="README.md">English</a> · <strong>Português (Brasil)</strong></p>
+<p align="center">
+  <a href="https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/CarlossgLuz/Open-Vaultin/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://www.python.org/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue.svg" /></a>
+  <a href="LICENSE"><img alt="Licença MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+</p>
 
 O **Open-Vaultin** é um projeto autoral **open source, independente e em evolução contínua** de **AI Agent Harness Governance**: uma camada local de governança e conhecimento durável para engenharia de software com IA.
 
